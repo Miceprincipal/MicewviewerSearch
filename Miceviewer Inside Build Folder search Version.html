@@ -1,0 +1,179 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Gallery</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        #image-frame {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #current-image {
+            flex: 1;
+            max-height: 96%;
+            object-fit: contain;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+        }
+
+        #json-frame {
+            flex: 1;
+            max-width: 50%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 10px;
+        }
+
+        #json-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="image-frame">
+        <img id="current-image">
+        <div id="controls">
+            <button id="prev-button">Previous</button>
+            <button id="next-button">Next</button>
+            <button id="auto-1s-button">Auto 1s</button>
+            <button id="auto-2s-button">2s</button>
+            <button id="auto-3s-button">3s</button>
+            <button id="stop-button">Stop</button>
+            <input type="text" id="search-input" placeholder="Search traits...">
+            <button id="search-button">Search</button>
+        </div>
+    </div>
+    <div id="json-frame">
+        <iframe id="json-iframe" src=""></iframe>
+    </div>
+
+    <script>
+
+        const currentImage = document.getElementById('current-image');
+        const jsonIframe = document.getElementById('json-iframe');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const auto1sButton = document.getElementById('auto-1s-button');
+        const auto2sButton = document.getElementById('auto-2s-button');
+        const auto3sButton = document.getElementById('auto-3s-button');
+        const stopButton = document.getElementById('stop-button');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+
+        let currentImageIndex = 0;
+        const totalImages = 10200; // Assuming you have 10000 images (0.png to 9999.png)
+
+        let autoAdvanceInterval;
+
+        const jsonDataCache = {}; // Cache to store fetched JSON data
+
+        async function fetchAndCacheJsonData(index) {
+            const jsonDataUrl = `json/${index}.json`; // Assuming JSON files are named as 0.json, 1.json, ...
+            try {
+                if (!jsonDataCache[index]) {
+                    const response = await fetch(jsonDataUrl);
+                    jsonDataCache[index] = await response.json();
+                }
+
+                return jsonDataCache[index];
+            } catch (error) {
+                console.error(`Error fetching JSON for image ${index}: ${error}`);
+                return null;
+            }
+        }
+
+        function loadAndDisplayImage(index) {
+            currentImage.src = `gif/${index}.gif`;
+            jsonIframe.src = `json/${index}.json`;
+        }
+
+        function autoAdvance(interval) {
+            clearInterval(autoAdvanceInterval);
+            autoAdvanceInterval = setInterval(() => {
+                currentImageIndex = (currentImageIndex + 1) % totalImages;
+                loadAndDisplayImage(currentImageIndex);
+            }, interval);
+        }
+
+        stopButton.addEventListener('click', () => {
+            clearInterval(autoAdvanceInterval);
+        });
+
+        prevButton.addEventListener('click', () => {
+            if (currentImageIndex > 0) {
+                currentImageIndex--;
+                loadAndDisplayImage(currentImageIndex);
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (currentImageIndex < totalImages - 1) {
+                currentImageIndex++;
+                loadAndDisplayImage(currentImageIndex);
+            }
+        });
+
+        auto1sButton.addEventListener('click', () => {
+            autoAdvance(1000);
+        });
+
+        auto2sButton.addEventListener('click', () => {
+            autoAdvance(2000);
+        });
+
+        auto3sButton.addEventListener('click', () => {
+            autoAdvance(3000);
+        });
+
+
+        searchButton.addEventListener('click', async () => {
+            const searchText = searchInput.value.toLowerCase();
+            const matchingIndexes = [];
+
+            for (let i = 0; i < totalImages; i++) {
+                const jsonData = await fetchAndCacheJsonData(i);
+
+                if (jsonData) {
+                    console.log(`Checking image ${i} - JSON data:`, jsonData);
+
+                    const traits = jsonData.attributes.map(attribute => attribute.value.toLowerCase());
+
+                    if (traits.includes(searchText)) {
+                        matchingIndexes.push(i);
+                    }
+                }
+            }
+
+            if (matchingIndexes.length > 0) {
+                currentImageIndex = matchingIndexes[0];
+                loadAndDisplayImage(currentImageIndex);
+            } else {
+                alert('No matching images found.');
+            }
+        });
+
+        // Load and display initial image and JSON data
+        loadAndDisplayImage(currentImageIndex);
+    </script>
+</body>
+</html>
